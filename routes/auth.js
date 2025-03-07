@@ -1,3 +1,5 @@
+//comments to try github
+
 const express = require("express");
 const nodemailer = require("nodemailer");
 
@@ -125,7 +127,6 @@ const mg = mailgun.client({
   username: "api",
   key: process.env.MAILGUN_API_KEY,
 });
-
 
 // ✅ Route: Forgot Password
 router.post("/forgot-password", async (req, res) => {
