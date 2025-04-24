@@ -1,33 +1,19 @@
+// server.js
 
 const express = require("express");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cors = require("cors");
-const authRoutes = require("./routes/auth");
-const authenticateUser = require("./middleware/authenticateUser");
-
+const routes = require("./routes"); // Import all routes
 // Load environment variables from .env file
 dotenv.config();
-
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5002;
 
 // Middleware
 app.use(express.json());
-// app.use(
-//   cors({
-//     origin: ["http://10.0.2.2:60895", "http://127.0.0.1:61333"], // Adjust based on your frontend setup
-//     methods: ["GET", "POST", "PUT", "DELETE"],
-//     allowedHeaders: ["Content-Type", "Authorization"],
-//   })
-// );
-app.use(
-  cors({
-    origin: "*", // Allow all origins for debugging
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+app.use(cors());
+
 // MongoDB Connection
 mongoose
   .connect(process.env.DB_URL, {
@@ -41,7 +27,7 @@ mongoose
   });
 
 // Routes
-app.use("/api/auth", authRoutes);
+app.use("/api", routes); // Use the routes from routes/index.js
 
 // Start Server
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

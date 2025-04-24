@@ -1,3 +1,4 @@
+//user.js
 const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema({
@@ -27,6 +28,10 @@ const userSchema = new mongoose.Schema({
     type: Number,
     min: 0,
     max: 10,
+  },
+  questionnaireCompleted: {
+    type: Boolean,
+    default: false,
   },
 });
 
