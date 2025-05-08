@@ -166,6 +166,28 @@ const getCommentsForPost = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+const editComment = async (req, res) => {
+  try {
+    const comment = await Comment.findById(req.params.commentId);
+
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    // Check if the logged-in user is the comment owner
+    if (comment.user.toString() !== req.user.id) {
+      return res.status(401).json({ message: "User not authorized" });
+    }
+
+    // Update comment text
+    comment.text = req.body.text || comment.text;
+    await comment.save();
+
+    res.json({ message: "Comment updated successfully", comment });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
 module.exports = router;
 module.exports = {
@@ -177,4 +199,5 @@ module.exports = {
   getCommentsForPost,
   deletePost,
   deleteComment,
+  editComment,
 };

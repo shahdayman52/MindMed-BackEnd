@@ -8,25 +8,26 @@ const authenticateUser = async (req, res, next) => {
     return res.status(401).json({ error: "Access denied. No token provided." });
   }
 
-const token = authHeader.replace("Bearer ", "").trim();
-console.log("Incoming Token:", token);
+  const token = authHeader.replace("Bearer ", "").trim();
+  console.log("Incoming Token:", token);
 
   try {
     console.log("VERIFYING with JWT_SECRET:", process.env.JWT_SECRET);
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log("Decoded:", decoded);
+    console.log("Decoded:", decoded);
 
     const user = await User.findById(decoded.id);
 
     if (!user) {
       return res.status(404).json({ error: "User not found." });
     }
+    req.user = { id: decoded.id }; // ✅ Attach only user ID here
 
-    req.user = user;
+    // req.user = user;
     next();
   } catch (ex) {
-      console.error("JWT Error:", ex.message);
+    console.error("JWT Error:", ex.message);
 
     if (ex.name === "TokenExpiredError") {
       return res
@@ -38,7 +39,3 @@ console.log("Incoming Token:", token);
 };
 
 module.exports = authenticateUser;
-
-
-
-

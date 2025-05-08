@@ -7,31 +7,139 @@ const crypto = require("crypto");
 const express = require("express");
 const router = express.Router();
 const Joi = require("joi");
+const dns = require("dns").promises;
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
 // Register User
-const registerUser = async (req, res) => {
-  const { name, email, password } = req.body;
+// const registerUser = async (req, res) => {
+//   const { name, email, password } = req.body;
+//   email = email.toLowerCase(); // 👈 normalize to lowercase edit caseSensitive
 
-const registerSchema = Joi.object({
-  name: Joi.string()
-    .min(2)
-    .max(50)
-    .pattern(/^[a-zA-Z\s'-]+$/)
-    .required(),
-  email: Joi.string().email().required(),
-  password: Joi.string()
-    .min(8)
-    .max(64)
-    .pattern(/(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&#])/)
-    .required(),
-});  try {
+//   const registerSchema = Joi.object({
+//     name: Joi.string()
+//       .min(2)
+//       .max(50)
+//       .pattern(/^[a-zA-Z\s'-]+$/)
+//       .required(),
+//     email: Joi.string().email().required(),
+//     password: Joi.string()
+//       .min(8)
+//       .max(64)
+//       .pattern(/(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&#])/)
+//       .required(),
+//   });
+//   try {
+//     const existingUser = await User.findOne({ email });
+//     if (existingUser) {
+//       return res.status(400).json({ error: "Email already in use." });
+//     }
+
+//     const hashedPassword = await bcrypt.hash(password, 10);
+//     const newUser = new User({ name, email, password: hashedPassword });
+//     await newUser.save();
+
+//     res.status(201).json({ message: "User registered successfully!" });
+//   } catch (error) {
+//     res
+//       .status(500)
+//       .json({ error: "An error occurred while registering the user." });
+//   }
+// };
+
+// // Login User
+// const loginUser = async (req, res) => {
+//   const { email, password } = req.body;
+//     email = email.toLowerCase(); 
+
+//   // Login Validation Schema
+//   const loginSchema = Joi.object({
+//     email: Joi.string().email().required(),
+//     password: Joi.string().required(),
+//   });
+//   try {
+//     const user = await User.findOne({ email });
+//     if (!user) {
+//       return res.status(400).json({ error: "Invalid email or password." });
+//     }
+
+//     const validPassword = await bcrypt.compare(password, user.password);
+//     if (!validPassword) {
+//       return res.status(400).json({ error: "Invalid email or password." });
+//     }
+
+//     console.log("SIGNING with JWT_SECRET:", process.env.JWT_SECRET);
+
+//     // const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, {
+//     //   expiresIn: "1h",
+//     // });
+//     const token = jwt.sign(
+//       { id: user._id, email: user.email },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "1h" } // Adjust the expiration time as needed
+//     );
+
+//     res.status(200).json({
+//       token: token,
+//       user: {
+//         _id: user._id, // Ensure _id is included
+//         name: user.name, // Ensure name is included
+//         email: user.email, // Include email if necessary
+//       },
+//     });
+
+//     // res.status(200).json({ message: "Login successful!", token });
+//   } catch (error) {
+//     res
+//       .status(500)
+//       .json({ error: "An error occurred while logging in the user." });
+//   }
+// };
+
+const registerUser = async (req, res) => {
+  let { name, email, password } = req.body;
+  console.log("Incoming request data:", { name, email, password });
+  email = email.toLowerCase(); // ✅ normalize
+   const registerSchema = Joi.object({
+    name: Joi.string()
+      .min(2)
+      .max(50)
+      .pattern(/^[a-zA-Z\s'-]+$/)
+      .required(),
+    email: Joi.string().email().required(),
+    password: Joi.string()
+      .min(8)
+      .max(64)
+      .pattern(/(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&#])/)
+      .required(),
+  });
+
+  const { error } = registerSchema.validate({ name, email, password });
+  if (error) {
+    return res.status(400).json({ error: error.details[0].message });
+  }
+
+  // ✅ MX validation
+  const domain = email.split("@")[1];
+  try {
+    const mxRecords = await dns.resolveMx(domain);
+    if (!mxRecords || mxRecords.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "Invalid email domain (no mail server found)." });
+    }
+  } catch (err) {
+    console.error("DNS check error:", err.message);
+    return res
+      .status(400)
+      .json({ error: "Invalid email domain (check failed)." });
+  }
+
+  try {
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ error: "Email already in use." });
     }
-    
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({ name, email, password: hashedPassword });
@@ -45,15 +153,20 @@ const registerSchema = Joi.object({
   }
 };
 
-// Login User
+// Login Route
 const loginUser = async (req, res) => {
-  const { email, password } = req.body;
+  let { email, password } = req.body;
+  email = email.toLowerCase(); // ✅ normalize
 
-  // Login Validation Schema
-  const loginSchema = Joi.object({
-    email: Joi.string().email().required(),
-    password: Joi.string().required(),
-  });
+    const loginSchema = Joi.object({
+      email: Joi.string().email().required(),
+      password: Joi.string().required(),
+    });
+  const { error } = loginSchema.validate({ email, password });
+  if (error) {
+    return res.status(400).json({ error: error.details[0].message });
+  }
+
   try {
     const user = await User.findOne({ email });
     if (!user) {
@@ -65,18 +178,11 @@ const loginUser = async (req, res) => {
       return res.status(400).json({ error: "Invalid email or password." });
     }
 
-    console.log("SIGNING with JWT_SECRET:", process.env.JWT_SECRET);
+    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, {
+      expiresIn: "1h",
+    });
 
-    // const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, {
-    //   expiresIn: "1h",
-    // });
-    const token = jwt.sign(
-      { id: user._id, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" } // Adjust the expiration time as needed
-    );
-
-    res.status(200).json({
+   res.status(200).json({
       token: token,
       user: {
         _id: user._id, // Ensure _id is included
@@ -84,8 +190,6 @@ const loginUser = async (req, res) => {
         email: user.email, // Include email if necessary
       },
     });
-
-    // res.status(200).json({ message: "Login successful!", token });
   } catch (error) {
     res
       .status(500)
@@ -140,6 +244,7 @@ const sendOTP = async (req, res) => {
 
 const verifyOTP = async (req, res) => {
   const { email, otp } = req.body;
+    email = email.toLowerCase(); 
   try {
     const record = await Otp.findOne({ email });
     if (!record) return res.status(400).json({ message: "No OTP found." });
@@ -158,7 +263,7 @@ const verifyOTP = async (req, res) => {
 
 const resetPassword = async (req, res) => {
   const { email, newPassword } = req.body;
-
+  email = email.toLowerCase(); 
   // First: Check general length using Joi
   const basicValidation = Joi.string().min(8).max(64).required().messages({
     "string.empty": "Password is required.",

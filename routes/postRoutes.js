@@ -16,6 +16,7 @@ router.delete("/:id", auth, postController.deletePost);
 
 router.post("/addComment/:postId", auth, postController.addComment);
 router.get("/getComment/:postId", postController.getCommentsForPost);
+router.put("/editComment/:commentId", auth, postController.editComment);
 router.delete("/deleteComment/:commentId", auth, postController.deleteComment); // Now the same as delete post
 module.exports = router;
 
